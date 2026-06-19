@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cat \"c:/Users/nicol/OneDrive/transition pro/For EachAcademy/Cours/Projet/TodoWeek/Backend/route/taskRoute.js\")",
+      "Read(//c/Users/nicol/OneDrive/transition pro/For EachAcademy/Cours/Projet/TodoWeek/Backend/route/**)"
+    ]
+  }
+}

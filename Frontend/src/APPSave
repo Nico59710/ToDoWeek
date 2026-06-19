@@ -1,0 +1,48 @@
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import Homepage from './pages/Homepage';
+import TasksPage from './pages/Task';
+import PlanningPage from './pages/Planning';
+import MembersPage from './pages/Membres';
+import DashboardPage from './pages/Dashboard';
+import RewardsPage from './pages/Rewards';
+import SettingsPage from './pages/Settings';
+import Navbar from './components/Navbar/Index';
+import AuthContext from './Contexte/AuthContext';
+import { useState } from 'react';
+import AuthService from './services/AuthService';
+
+
+function App() {
+  const [isLogged, setIsLogged] = useState(AuthService.isConnected());
+  const [role, setRole] = useState(AuthService.getRole());
+  const [mail, setMail] = useState(AuthService.getMail());
+  const [userId, setUserId] = useState(AuthService.getUserId());
+  const [families, setFamilies] = useState([]);
+  const [user, setUser] = useState({});
+  const [tasksByUserId, setTasksByUserId] = useState([]);
+ 
+  
+
+  return (
+    <AuthContext.Provider value={{ isLogged, setIsLogged, role, setRole, mail, setMail, userId, setUserId, families, setFamilies, user, setUser, tasksByUserId, setTasksByUserId }}>
+      <Router >
+        <div style={{ display: "flex" }}>
+          <Navbar />
+          <div style={{ flex: 1 }}>
+            <Routes>
+              <Route path="/" element={<Homepage />} />
+              <Route path="/tasks" element={<TasksPage />} />
+              <Route path="/planning" element={<PlanningPage />} />
+              <Route path="/members" element={<MembersPage />} />
+              <Route path="/dashboard" element={<DashboardPage />} />
+              <Route path="/rewards" element={<RewardsPage />} />
+              <Route path="/settings" element={<SettingsPage />} />
+            </Routes>
+          </div>
+        </div>
+      </Router >
+    </AuthContext.Provider>
+  );
+}
+
+export default App;

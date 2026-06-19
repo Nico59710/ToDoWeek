@@ -1,0 +1,177 @@
+-- Supprimer les tables si elles existent déjà (ordre inverse des créations)
+DROP TABLE IF EXISTS task_rooms;
+DROP TABLE IF EXISTS users_families;
+DROP TABLE IF EXISTS rewards;
+DROP TABLE IF EXISTS validation_tasks;
+DROP TABLE IF EXISTS tasks;
+DROP TABLE IF EXISTS users;
+DROP TABLE IF EXISTS roles;
+DROP TABLE IF EXISTS rooms;
+DROP TABLE IF EXISTS categories;
+DROP TABLE IF EXISTS reward_types;
+DROP TABLE IF EXISTS families;
+
+-- Table des familles
+CREATE TABLE families(
+   family_id INT AUTO_INCREMENT,
+   name VARCHAR(50) NOT NULL,
+   owner_user_id INT NOT NULL,
+   invite_code VARCHAR(50) NOT NULL,
+   created_at DATETIME NOT NULL,
+   updated_at DATETIME NOT NULL,
+   is_active BOOLEAN NOT NULL,
+   avatar_url VARCHAR(255),
+   PRIMARY KEY(family_id)
+);
+
+-- Types de récompenses
+CREATE TABLE reward_types(
+   reward_type_id INT AUTO_INCREMENT,
+   name VARCHAR(50) NOT NULL,
+   is_active BOOLEAN NOT NULL,
+   created_by INT NOT NULL,
+   PRIMARY KEY(reward_type_id)
+);
+
+-- Catégories de tâches
+CREATE TABLE categories(
+   category_id INT AUTO_INCREMENT,
+   family_id INT NOT NULL,
+   name VARCHAR(50) NOT NULL,
+   color VARCHAR(50) NOT NULL,
+   created_by INT NOT NULL,
+   created_at DATETIME NOT NULL,
+   updated_at DATETIME,
+   is_active BOOLEAN NOT NULL,
+   PRIMARY KEY(category_id)
+);
+
+-- Pièces/Chambres
+CREATE TABLE rooms(
+   room_id INT AUTO_INCREMENT,
+   name VARCHAR(50) NOT NULL,
+   color VARCHAR(50) NOT NULL,
+   created_by INT NOT NULL,
+   created_at DATETIME NOT NULL,
+   updated_at DATETIME,
+   is_active BOOLEAN NOT NULL,
+   family_id INT,
+   PRIMARY KEY(room_id),
+   FOREIGN KEY(family_id) REFERENCES families(family_id)
+);
+
+-- Rôles dans les familles
+CREATE TABLE roles(
+   role_id INT AUTO_INCREMENT,
+   role VARCHAR(50) NOT NULL,
+   is_active BOOLEAN NOT NULL,
+   created_by INT NOT NULL,
+   family_id INT,
+   PRIMARY KEY(role_id),
+   FOREIGN KEY(family_id) REFERENCES families(family_id)
+);
+
+-- Utilisateurs
+CREATE TABLE users(
+   user_id INT AUTO_INCREMENT,
+   email VARCHAR(255),
+   password_hash VARCHAR(255) NOT NULL,
+   last_name VARCHAR(255) NOT NULL,
+   first_name VARCHAR(255) NOT NULL,
+   avatar_url TEXT,
+   points INT,
+   is_active BOOLEAN NOT NULL,
+   created_at DATETIME NOT NULL,
+   updated_at DATETIME,
+   role_id INT NOT NULL,
+   PRIMARY KEY(user_id),
+   UNIQUE(email),
+   FOREIGN KEY(role_id) REFERENCES roles(role_id)
+);
+
+-- Tâches
+CREATE TABLE tasks(
+   task_id INT AUTO_INCREMENT,
+   title VARCHAR(50) NOT NULL,
+   description VARCHAR(255),
+   status ENUM('en cours','validé','en attente','à faire') NOT NULL,
+   priority ENUM('basse','moyenne','haute'),
+   due_date DATE,
+   recurrence_type ENUM('jours','semaine','mois','années'),
+   recurrence_value INT,
+   task_points INT,
+   category_id INT,
+   created_at DATETIME NOT NULL,
+   updated_at DATETIME NOT NULL,
+   is_active BOOLEAN NOT NULL,
+   room_id INT,
+   family_id INT,
+   user_id INT NOT NULL,
+   created_by INT,
+   PRIMARY KEY(task_id),
+   FOREIGN KEY(family_id) REFERENCES families(family_id),
+   FOREIGN KEY(category_id) REFERENCES categories(category_id),
+   FOREIGN KEY(user_id) REFERENCES users(user_id),
+   FOREIGN KEY(created_by) REFERENCES users(user_id),
+   FOREIGN KEY(room_id) REFERENCES rooms(room_id)
+);
+
+-- Validations de tâches
+CREATE TABLE validation_tasks(
+   validation_task_id INT AUTO_INCREMENT,
+   validated_at DATE NOT NULL,
+   validated_by INT NOT NULL,
+   duration INT,
+   is_active BOOLEAN NOT NULL,
+   family_id INT NOT NULL,
+   task_id INT NOT NULL,
+   PRIMARY KEY(validation_task_id),
+   FOREIGN KEY(task_id) REFERENCES tasks(task_id),
+   FOREIGN KEY(validated_by) REFERENCES users(user_id),
+   FOREIGN KEY(family_id) REFERENCES families(family_id)
+);
+
+-- Récompenses
+CREATE TABLE rewards(
+   reward_id INT AUTO_INCREMENT,
+   reward_point INT NOT NULL,
+   reward_name VARCHAR(255) NOT NULL,
+   reward_duration INT,
+   reward_created_by INT NOT NULL,
+   reward_created_at DATE NOT NULL,
+   reward_updated_at DATE,
+   reward_is_active BOOLEAN NOT NULL,
+   reward_description VARCHAR(255),
+   reward_type_id INT NOT NULL,
+   family_id INT NOT NULL,
+   PRIMARY KEY(reward_id),
+   FOREIGN KEY(reward_type_id) REFERENCES reward_types(reward_type_id),
+   FOREIGN KEY(family_id) REFERENCES families(family_id),
+   FOREIGN KEY(reward_created_by) REFERENCES users(user_id)
+);
+
+-- Liaison entre utilisateurs et familles
+CREATE TABLE users_families(
+   family_id INT,
+   user_id INT,
+   is_active BOOLEAN NOT NULL,
+   PRIMARY KEY(family_id, user_id),
+   FOREIGN KEY(family_id) REFERENCES families(family_id),
+   FOREIGN KEY(user_id) REFERENCES users(user_id)
+);
+
+-- Liaison entre tâches et pièces
+CREATE TABLE task_rooms(
+   room_id INT,
+   task_id INT,
+   is_active BOOLEAN NOT NULL,
+   PRIMARY KEY(room_id, task_id),
+   FOREIGN KEY(room_id) REFERENCES rooms(room_id),
+   FOREIGN KEY(task_id) REFERENCES tasks(task_id)
+);
+
+-- Ajout des contraintes de clés étrangères manquantes
+ALTER TABLE reward_types ADD FOREIGN KEY (created_by) REFERENCES users(user_id);
+ALTER TABLE categories ADD FOREIGN KEY (created_by) REFERENCES users(user_id);
+ALTER TABLE rooms ADD FOREIGN KEY (created_by) REFERENCES users(user_id);
+ALTER TABLE roles ADD FOREIGN KEY (created_by) REFERENCES users(user_id);

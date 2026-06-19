@@ -1,0 +1,28 @@
+.btns {
+    display: flex;
+    gap: 5px;
+   justify-content: space-around;
+}
+
+button {  
+    text-decoration: none;
+    color: #555;
+    border-radius: 12px;
+    border: none;
+    background-color: transparent;
+    width: calc(100%/3);
+}
+
+button:hover {
+    background: #eef3ff;
+}
+
+.activebtn {
+    padding: 14px 16px;
+    text-decoration: none;
+    color: #555;
+    border-radius: 12px;
+    border: none;
+    border-bottom: 2px #b3c7f7 solid;
+    font-weight: 600;
+}
