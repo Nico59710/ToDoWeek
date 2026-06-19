@@ -15,9 +15,9 @@ function App() {
   return (
     <AuthProvider>
       <Router >
-        <div style={{ display: "flex" }}>
+        <div className="app-wrapper">
           <Navbar />
-          <div style={{ flex: 1 }}>
+          <div className="app-content">
             <Routes>
               <Route path="/" element={<Homepage />} />
               <Route path="/tasks" element={<TasksPage />} />

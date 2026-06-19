@@ -1,91 +1,99 @@
 import logo from "../../assets/logo+titre-remove.png";
-import "./Index.css"
+import "./Index.css";
 import { NavLink } from "react-router-dom";
 import AuthContext from "../../Contexte/AuthContext";
-import { useContext, useEffect, useState } from "react";
-import { getFamiliesByUserId } from "../../services/service";
+import { useContext } from "react";
+import Avatar from "../ui/Avatar";
 
-
+const NAV_LINKS = [
+    { to: "/",         icon: "🏠", label: "Accueil" },
+    { to: "/tasks",    icon: "📋", label: "Tâches" },
+    { to: "/members",  icon: "👥", label: "Membres" },
+    { to: "/planning", icon: "🗓️", label: "Planning" },
+    { to: "/dashboard",icon: "📊", label: "Tableau de bord" },
+    { to: "/rewards",  icon: "🏆", label: "Récompenses" },
+];
 
 function Navbar() {
-    const { isLogged, role, mail, userId, families, selectedFamily, setSelectedFamily } = useContext(AuthContext);
-
+    const { isLogged, role, mail, families, selectedFamily, setSelectedFamily, user } = useContext(AuthContext);
 
     return (
         <aside className="sidebar">
-            <div className="sidebar-header">
-                <img src={logo} alt="Logo" className="logo" />
 
-                <h2>Maison au top</h2>
-                <p>                    {mail}                </p>
-                <p>                    {role}                </p>
-                {families.length > 1 ? (
-                    <select
-                        value={selectedFamily?.family_id || ""}
-                        onChange={e => setSelectedFamily(families.find(f => f.family_id === parseInt(e.target.value)))}
-                    >
-                        {families.map((family) => (
-                            <option key={family.family_id} value={family.family_id}>
-                                {family.name}
-                            </option>
-                        ))}
-                    </select>
-                ) : families.length === 1 ? (
-                    <p>{families[0].name}</p>
-                ) : null}
+            {/* ── Branding ── */}
+            <div className="sidebar-header">
+                <div className="sidebar-brand">
+                    <img src={logo} alt="Logo" className="sidebar-logo" />
+                    <div>
+                        <div className="sidebar-brand-name">Maison <span>au top</span></div>
+                    </div>
+                </div>
             </div>
 
-            <nav>
-                <div className="nav-links">
-                    <NavLink to="/" className={({ isActive }) => isActive ? "active" : "nav-links"}
-                    >
-                        🏠 Accueil
-                    </NavLink>
-
-                    <NavLink to="/tasks" className={({ isActive }) => isActive ? "active" : "nav-links"}
-                    >
-                        📋 Tâches
-                    </NavLink>
-
-                    <NavLink to="/members" className={({ isActive }) => isActive ? "active" : "nav-links"}>
-                        👥 Membres
-                    </NavLink>
-
-                    <NavLink to="/settings" className={({ isActive }) => isActive ? "active" : "nav-links"}>
-                        ⚙️ Paramètres
-                    </NavLink>
-
-                    <NavLink to="/planning" className={({ isActive }) => isActive ? "active" : "nav-links"}>
-                        🗓️ Planning
-                    </NavLink>
-
-                    <NavLink to="/dashboard" className={({ isActive }) => isActive ? "active" : "nav-links"}>
-                        📊 Tableau de bord
-                    </NavLink>
-
-                    <NavLink to="/rewards" className={({ isActive }) => isActive ? "active" : "nav-links"}>
-                        🏆 Récompenses
-                    </NavLink>
+            {/* ── User info ── */}
+            {isLogged && (
+                <div className="sidebar-user-block">
+                    <Avatar
+                        firstName={user?.first_name ?? mail?.split("@")[0] ?? ""}
+                        lastName={user?.last_name ?? ""}
+                        size="md"
+                    />
+                    <div className="sidebar-user-info">
+                        <span className="sidebar-user-name">
+                            {user?.first_name ? `${user.first_name} ${user.last_name ?? ""}` : mail}
+                        </span>
+                        <span className="sidebar-user-mail">{mail}</span>
+                        {role && <span className="sidebar-role-badge">{role}</span>}
+                    </div>
                 </div>
+            )}
+
+            {/* ── Famille ── */}
+            {isLogged && families.length > 0 && (
+                <div className="sidebar-family">
+                    <p className="sidebar-family-label">Famille active</p>
+                    {families.length > 1 ? (
+                        <select
+                            value={selectedFamily?.family_id ?? ""}
+                            onChange={e => setSelectedFamily(families.find(f => f.family_id === parseInt(e.target.value)))}
+                        >
+                            {families.map(f => (
+                                <option key={f.family_id} value={f.family_id}>{f.name}</option>
+                            ))}
+                        </select>
+                    ) : (
+                        <div className="sidebar-family-name">{families[0].name}</div>
+                    )}
+                </div>
+            )}
+
+            {/* ── Navigation ── */}
+            <nav className="sidebar-nav">
+                <span className="nav-section-label">Navigation</span>
+                {NAV_LINKS.map(({ to, icon, label }) => (
+                    <NavLink
+                        key={to}
+                        to={to}
+                        end={to === "/"}
+                        className={({ isActive }) => `nav-link${isActive ? " active" : ""}`}
+                    >
+                        <span className="nav-link-icon">{icon}</span>
+                        <span className="nav-link-label">{label}</span>
+                    </NavLink>
+                ))}
+
+                <span className="nav-section-label" style={{ marginTop: "8px" }}>Compte</span>
+                <NavLink to="/settings" className={({ isActive }) => `nav-link${isActive ? " active" : ""}`}>
+                    <span className="nav-link-icon">⚙️</span>
+                    <span className="nav-link-label">Paramètres</span>
+                </NavLink>
             </nav>
 
+            {/* ── Footer ── */}
             <div className="sidebar-footer">
-                <h1>FOOTER à completer</h1>
-                <ul className="footer-links">
-                    <li>
-                        <a href="/help">❓ Aide</a>
-                    </li>
-                    <li>
-                        <a href="/contact">📞 Contact</a>
-                    </li>
-                    <li>
-                        <a href="/terms">📜 Conditions d'utilisation</a>
-                    </li>
-                    <li>
-                        <a href="/privacy">🔒 Politique de confidentialité</a>
-                    </li>
-                </ul>
+                <p className="sidebar-footer-text">© 2026 Maison au top</p>
             </div>
+
         </aside>
     );
 }

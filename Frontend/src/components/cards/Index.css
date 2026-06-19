@@ -1,34 +1,202 @@
-.tasks-card {
-    
-    display: inline-flex;
+/* ═══════════════════════
+   Task Card
+   ═══════════════════════ */
+.task-card {
+    background: var(--surface);
+    border-radius: var(--radius-md);
+    border: 1.5px solid var(--border);
+    box-shadow: var(--shadow-sm);
+    display: flex;
     flex-direction: column;
-    width: max-content;
-    flex: 0 0 auto;
-
-    background: #ffffff;
-    border-radius: 12px;
-    padding: 16px 18px;
-    margin: 10px 0;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-    border-left: 5px solid #b3c7f7; 
-    border-right: 5px solid #b3c7f7; 
-    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    width: 100%;
+    transition: box-shadow 0.15s, transform 0.15s;
+    overflow: hidden;
+    position: relative;
 }
 
-.tasks-card:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+.task-card:hover {
+    box-shadow: var(--shadow-md);
+    transform: translateY(-1px);
 }
 
-.tasks-card h3 {
-    margin: 0 0 6px 0;
-    font-size: 18px;
-    color: #111827;
+/* ── Bande de priorité (gauche) ── */
+.task-card::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
 }
 
-.tasks-card p {
+.task-card[data-priority="haute"]::before   { background: var(--danger); }
+.task-card[data-priority="moyenne"]::before { background: var(--warning); }
+.task-card[data-priority="basse"]::before   { background: var(--success); }
+
+/* ── Corps principal ── */
+.task-card-main {
+    padding: 12px 14px 12px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex: 1;
+}
+
+/* ── Ligne titre + badge statut ── */
+.task-card-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.task-card-title {
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: var(--text-primary);
     margin: 0;
-    color: #6b7280;
-    font-size: 14px;
-    line-height: 1.4;
+    line-height: 1.3;
+    flex: 1;
+    min-width: 0;
+    overflow-wrap: break-word;
 }
+
+/* ── Badge statut ── */
+.task-status-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 7px;
+    border-radius: 20px;
+    font-size: 0.66rem;
+    font-weight: 700;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.task-status--todo      { background: #f1f5f9; color: var(--text-secondary); }
+.task-status--pending   { background: #fef9c3; color: #a16207; }
+.task-status--validated { background: #dcfce7; color: #16a34a; }
+
+/* ── Description ── */
+.task-card-desc {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    line-height: 1.4;
+    margin: 0;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+/* ── Meta chips : date + priorité + points ── */
+.task-card-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    align-items: center;
+}
+
+.task-meta-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 2px 7px;
+    border-radius: 20px;
+    font-size: 0.68rem;
+    font-weight: 600;
+}
+
+.task-meta-chip--date    { color: #7c3aed; background: #f5f3ff; }
+.task-meta-chip--haute   { color: var(--danger); background: var(--danger-light); }
+.task-meta-chip--moyenne { color: #a16207; background: #fef9c3; }
+.task-meta-chip--basse   { color: #16a34a; background: #dcfce7; }
+.task-meta-chip--points  { color: var(--primary); background: var(--primary-light); }
+
+/* ── Assigné à ── */
+.task-card-assignee {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding-top: 6px;
+    border-top: 1px solid var(--border);
+    margin-top: 2px;
+}
+
+.task-card-assignee-name {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+/* ── Section attribution (tâches non assignées) ── */
+.task-card-assign-panel {
+    padding: 10px 14px 10px 18px;
+    background: var(--bg);
+    border-top: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+}
+
+.task-card-assign-row {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+}
+
+.task-card-assign-select {
+    flex: 1;
+    padding: 6px 10px;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: 0.78rem;
+    background: var(--surface);
+    color: var(--text-primary);
+    font-family: var(--font);
+    cursor: pointer;
+}
+
+.task-card-assign-select:focus {
+    outline: none;
+    border-color: var(--primary);
+}
+
+/* ── Boutons d'action ── */
+.task-card-actions {
+    display: flex;
+    gap: 4px;
+    padding: 8px 14px 10px 18px;
+    border-top: 1px solid var(--border);
+    flex-wrap: wrap;
+}
+
+.tca-btn {
+    padding: 4px 9px;
+    border: none;
+    border-radius: var(--radius-sm);
+    font-size: 0.7rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.15s;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    white-space: nowrap;
+    font-family: var(--font);
+}
+
+.tca-btn--submit   { background: var(--primary-light); color: var(--primary); }
+.tca-btn--submit:hover { background: #ddd6fe; }
+
+.tca-btn--cancel   { background: #fff7ed; color: #c2410c; }
+.tca-btn--cancel:hover { background: #fed7aa; }
+
+.tca-btn--edit     { background: var(--bg); color: var(--text-secondary); border: 1px solid var(--border); }
+.tca-btn--edit:hover { background: var(--border); }
+
+.tca-btn--delete   { background: var(--danger-light); color: var(--danger); }
+.tca-btn--delete:hover { background: #fecaca; }
+
+.tca-btn--take     { background: var(--primary); color: white; font-size: 0.72rem; }
+.tca-btn--take:hover { background: var(--primary-dark); }

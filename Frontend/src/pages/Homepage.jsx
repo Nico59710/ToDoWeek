@@ -1,9 +1,11 @@
 import { useContext, useEffect, useState } from "react";
-import { addUserToFammily, createNewFamily, createUser, getAllTasks, getFamiliesByOwnerId, getFamiliesByOwnerIdAndName, getFamiliesByUserId, getTasksByUserId, getUserById, loginUser, updateUserRole, joinFamily } from "../services/service";
+import { addUserToFammily, createNewFamily, createUser, getFamiliesByUserId, getTasksByUserId, getUserById, loginUser, updateUserRole, joinFamily } from "../services/service";
 import { jwtDecode } from "jwt-decode";
 import AuthContext from "../Contexte/AuthContext";
 import axios from "axios";
 import TasksCard from "../components/cards/Index";
+import StatCard from "../components/ui/StatCard";
+import "./Homepage.css";
 
 
 
@@ -15,6 +17,8 @@ function Homepage() {
     //Utilisation du contexte global
     const { isLogged, role, mail, userId, families, user, tasksByUserId } = useContext(AuthContext);
 
+    const [loginFlipped, setLoginFlipped] = useState(false);
+    const [registerFlipped, setRegisterFlipped] = useState(false);
 
     // Login state
     const [email, setEmail] = useState("");
@@ -212,152 +216,158 @@ function Homepage() {
     }, [isLogged, userId]);
 
     return (
-        <>
-            <h1>Bienvenue sur Maison au top !</h1>
-            <p>Votre application de gestion de tâches ménagères pour une maison organisée et harmonieuse.</p>
-            <p>Gérez facilement les tâches, attribuez-les à vos proches, suivez les progrès et récompensez les efforts pour une maison au top !</p>
-            {mail}
-            <hr />
-
+        <div className="homepage">
             {isLogged ? (
                 role === "temp" ? (
+                    /* ── Onboarding : créer ou rejoindre une famille ── */
                     <>
-                        <h1>Bienvenue {user?.first_name} !</h1>
-                        <button onClick={handleLogout}>Deconnexion</button>
-                        <section>
-                            <h3>creer une famille</h3>
-
-                            <form onSubmit={handleNewFamily}>
-                                <div>
-                                    <label>
-                                        Nom de la famille:
-                                        <input value={newFamily} onChange={e => setNewFamily(e.target.value)} required />
-                                    </label>
+                        <div className="hero">
+                            <h1>Bienvenue <span>{user?.first_name}</span> !</h1>
+                            <p>Pour commencer, crée ta famille ou rejoins-en une avec un code d'invitation.</p>
+                        </div>
+                        <div className="onboarding-layout">
+                            <button className="btn-logout" onClick={handleLogout}>Déconnexion</button>
+                            <div className="onboarding-cards">
+                                <div className="onboarding-card">
+                                    <h3>Créer une famille</h3>
+                                    <form onSubmit={handleNewFamily}>
+                                        <div className="form-group">
+                                            <label>Nom de la famille</label>
+                                            <input value={newFamily} onChange={e => setNewFamily(e.target.value)} placeholder="Ex : Les Dupont" required />
+                                        </div>
+                                        <button className="btn-primary" type="submit">Créer la famille</button>
+                                    </form>
                                 </div>
-                                <div>
-                                    <button type="submit">Créer la famille</button>
+                                <div className="onboarding-card">
+                                    <h3>Rejoindre une famille</h3>
+                                    <form onSubmit={handleJoinFamily}>
+                                        <div className="form-group">
+                                            <label>Code d'invitation</label>
+                                            <input value={inviteCode} onChange={e => setInviteCode(e.target.value)} placeholder="Colle le code ici" required />
+                                        </div>
+                                        <button className="btn-primary" type="submit">Rejoindre</button>
+                                    </form>
                                 </div>
-                            </form>
-
-                            <h3>Rejoindre une famille</h3>
-                            <form onSubmit={handleJoinFamily}>
-                                <div>
-                                    <label>
-                                        Entrer le code d'invitation :
-                                        <input
-                                            value={inviteCode}
-                                            onChange={e => setInviteCode(e.target.value)}
-                                            required
-                                        />
-                                    </label>
-                                </div>
-                                <div>
-                                    <button type="submit">Rejoindre la famille</button>
-                                </div>
-                            </form>
-                        </section>
-                    </>) : (
-                    <>
-                        <h1>Bienvenue {user?.first_name} !</h1>
-                        <button onClick={handleLogout}>Deconnexion</button>
-
-                        <section>
-                            <h2>Mes infos</h2>
-
-                            <div>Famille(s) :
-                                {families.length > 0 ? (
-                                    <ul>
-                                        {families.map((family) => (
-                                            <li key={family.family_id}>
-                                                {family.name}
-                                            </li>
-                                        ))}
-                                    </ul>
-                                ) : (
-                                    <p>Aucune famille trouvée.</p>
-                                )}
                             </div>
-
-                            <div>
-                                {tasksByUserId.length > 0 ? (
-                                    <>
-                                        <p>Mes taches attribuées :</p>
-                                        {tasksByUserId.map((task) => (
-                                            <TasksCard
-                                                key={task.task_id}
-                                                task={task}
-                                            />
-                                        ))}
-                                    </>
-                                ) : (
-                                    <p>Rien à faire !</p>
-                                )}
-                            </div>
-                        </section>
+                        </div>
                     </>
-                )) : (
+                ) : (
+                    /* ── Dashboard homepage : membre connecté ── */
+                    <div className="home-layout">
+                        {/* Header */}
+                        <div className="home-header">
+                            <div>
+                                <h1>Bonjour, <span>{user?.first_name}</span> 👋</h1>
+                                <p>Voici un résumé de votre activité.</p>
+                            </div>
+                            <button className="btn-logout" onClick={handleLogout}>Déconnexion</button>
+                        </div>
+
+                        {/* Stats */}
+                        <div className="home-stats">
+                            <StatCard icon="📋" value={tasksByUserId.length} label="Tâches assignées" variant="primary" />
+                            <StatCard icon="✅" value={tasksByUserId.filter(t => t.status === "validé").length} label="Validées" variant="success" />
+                            <StatCard icon="⏳" value={tasksByUserId.filter(t => t.status === "en attente").length} label="En attente" variant="warning" />
+                            <StatCard icon="👨‍👩‍👧" value={families.length} label={families.length > 1 ? "Familles" : "Famille"} variant="default" />
+                        </div>
+
+                        {/* Tâches */}
+                        <div className="home-section">
+                            <h2>Mes tâches assignées</h2>
+                            {tasksByUserId.length > 0 ? (
+                                <div className="home-tasks-grid">
+                                    {tasksByUserId.map((task) => (
+                                        <TasksCard key={task.task_id} task={task} />
+                                    ))}
+                                </div>
+                            ) : (
+                                <p className="no-tasks">Rien à faire pour l'instant ! 🎉</p>
+                            )}
+                        </div>
+                    </div>
+                )
+            ) : (
+                /* ── Écran de connexion / inscription ── */
                 <>
-                    <section>
-                        <h2>Connexion</h2>
-                        <form onSubmit={handleLogin}>
-                            <div>
-                                <label>
-                                    Email:
-                                    <input type="email" value={email} onChange={e => { setEmail(e.target.value); setLoginError(""); }} required />
-                                </label>
-                            </div>
-                            <div>
-                                <label>
-                                    Mot de passe:
-                                    <input type="password" value={password} onChange={e => { setPassword(e.target.value); setLoginError(""); }} required />
-                                </label>
-                            </div>
-                            {loginError && <p style={{ color: "red", margin: "4px 0" }}>{loginError}</p>}
-                            <div>
-                                <button type="submit">Se connecter</button>
-                            </div>
-                        </form>
-                    </section>
+                    <div className="hero">
+                        <h1><span>Maison au top</span> 🏠</h1>
+                        <p>Gérez les tâches ménagères en famille — attribuez, suivez et récompensez les efforts de chacun.</p>
+                    </div>
+                    <div className="auth-cards">
 
-                    <hr />
+                        {/* ── Carte connexion ── */}
+                        <div className="flip-card-wrapper login">
+                            <div className={`flip-card-inner ${loginFlipped ? "flipped" : ""}`}>
+                                {/* Face avant */}
+                                <div className="flip-card-front" onClick={() => setLoginFlipped(true)}>
+                                    <div className="flip-front-icon">🔑</div>
+                                    <h2>Connexion</h2>
+                                    <p>Accédez à votre espace famille</p>
+                                    <span className="flip-hint">Cliquer pour continuer →</span>
+                                </div>
+                                {/* Face arrière */}
+                                <div className="flip-card-back">
+                                    <button className="flip-back-btn" onClick={() => setLoginFlipped(false)}>← Retour</button>
+                                    <h2>Connexion</h2>
+                                    <form onSubmit={handleLogin}>
+                                        <div className="form-group">
+                                            <label>Email</label>
+                                            <input type="email" value={email} onChange={e => { setEmail(e.target.value); setLoginError(""); }} required />
+                                        </div>
+                                        <div className="form-group">
+                                            <label>Mot de passe</label>
+                                            <input type="password" value={password} onChange={e => { setPassword(e.target.value); setLoginError(""); }} required />
+                                        </div>
+                                        {loginError && <p className="form-error">{loginError}</p>}
+                                        <button className="btn-login" type="submit">Se connecter</button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
 
-                    <section>
-                        <h2>Inscription</h2>
-                        <form onSubmit={handleRegister}>
-                            <div>
-                                <label>
-                                    Email:
-                                    <input type="email" value={regEmail} onChange={e => { setRegEmail(e.target.value); setRegisterError(""); }} required />
-                                </label>
+                        {/* ── Carte inscription ── */}
+                        <div className="flip-card-wrapper register">
+                            <div className={`flip-card-inner ${registerFlipped ? "flipped" : ""}`}>
+                                {/* Face avant */}
+                                <div className="flip-card-front" onClick={() => setRegisterFlipped(true)}>
+                                    <div className="flip-front-icon">🏠</div>
+                                    <h2>Créer un compte</h2>
+                                    <p>Rejoignez l'aventure en famille</p>
+                                    <span className="flip-hint">Cliquer pour continuer →</span>
+                                </div>
+                                {/* Face arrière */}
+                                <div className="flip-card-back">
+                                    <button className="flip-back-btn" onClick={() => setRegisterFlipped(false)}>← Retour</button>
+                                    <h2>Créer un compte</h2>
+                                    <form onSubmit={handleRegister}>
+                                        <div className="form-group">
+                                            <label>Prénom</label>
+                                            <input value={regFirstName} onChange={e => setRegFirstName(e.target.value)} required />
+                                        </div>
+                                        <div className="form-group">
+                                            <label>Nom</label>
+                                            <input value={regLastName} onChange={e => setRegLastName(e.target.value)} required />
+                                        </div>
+                                        <div className="form-group">
+                                            <label>Email</label>
+                                            <input type="email" value={regEmail} onChange={e => { setRegEmail(e.target.value); setRegisterError(""); }} required />
+                                        </div>
+                                        <div className="form-group">
+                                            <label>Mot de passe</label>
+                                            <input type="password" value={regPassword} onChange={e => { setRegPassword(e.target.value); setRegisterError(""); }} required />
+                                            <p className="form-hint">6 caractères minimum</p>
+                                        </div>
+                                        {registerError && <p className="form-error">{registerError}</p>}
+                                        <button className="btn-register" type="submit">Créer mon compte</button>
+                                    </form>
+                                </div>
                             </div>
-                            <div>
-                                <label>
-                                    Mot de passe:
-                                    <input type="password" value={regPassword} onChange={e => { setRegPassword(e.target.value); setRegisterError(""); }} required />
-                                </label>
-                                <small style={{ color: "#888" }}>6 caractères minimum</small>
-                            </div>
-                            <div>
-                                <label>
-                                    Prénom:
-                                    <input value={regFirstName} onChange={e => setRegFirstName(e.target.value)} required />
-                                </label>
-                            </div>
-                            <div>
-                                <label>
-                                    Nom:
-                                    <input value={regLastName} onChange={e => setRegLastName(e.target.value)} required />
-                                </label>
-                            </div>
-                            {registerError && <p style={{ color: "red", margin: "4px 0" }}>{registerError}</p>}
-                            <div>
-                                <button type="submit">S'inscrire</button>
-                            </div>
-                        </form>
-                    </section>
-                </>)
-            }
-        </>
+                        </div>
+
+                    </div>
+                </>
+            )}
+        </div>
     );
 }
 export default Homepage;

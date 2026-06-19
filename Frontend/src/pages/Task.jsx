@@ -1,91 +1,184 @@
 import { useContext, useEffect, useState } from "react";
 import { createTask, getRoomsByFamilyId, getTasksByFamilyId, getMembersByFamilyId, updateTaskStatus, assignTask, UpdateTask, deleteTask } from "../services/service";
 import TasksCard from "../components/cards/Index";
-import "./task.css"
+import Modal from "../components/ui/Modal";
+import PageHeader from "../components/ui/PageHeader";
+import EmptyState from "../components/ui/EmptyState";
+import "./task.css";
 import AuthContext from "../Contexte/AuthContext";
 
-function TasksPage() {
-    const { isLogged, role, families, userId, selectedFamily, can } = useContext(AuthContext);
+const emptyTask = {
+    title: "", description: "", priority: "moyenne",
+    due_date: "", task_points: 0, status: "à faire",
+    is_active: 1, room_id: "", recurrence_type: "", recurrence_value: "", attributed_to: ""
+};
 
-    const [showForm, setShowForm] = useState(false);
-    const [modifForm, setModifForm] = useState(false);
+/* ── Formulaire partagé création / modification ── */
+function TaskForm({ values, onChange, rooms, members }) {
+    return (
+        <div className="task-form-grid">
+            <div className="task-form-group full-width">
+                <label>Titre *</label>
+                <input value={values.title} onChange={e => onChange({ ...values, title: e.target.value })} required placeholder="Nom de la tâche..." />
+            </div>
+            <div className="task-form-group full-width">
+                <label>Description</label>
+                <input value={values.description} onChange={e => onChange({ ...values, description: e.target.value })} placeholder="Détails optionnels..." />
+            </div>
+            <div className="task-form-group">
+                <label>Priorité</label>
+                <select value={values.priority} onChange={e => onChange({ ...values, priority: e.target.value })}>
+                    <option value="basse">🟢 Basse</option>
+                    <option value="moyenne">🟡 Moyenne</option>
+                    <option value="haute">🔴 Haute</option>
+                </select>
+            </div>
+            <div className="task-form-group">
+                <label>Date limite</label>
+                <input type="date" value={values.due_date} onChange={e => onChange({ ...values, due_date: e.target.value })} />
+            </div>
+            <div className="task-form-group">
+                <label>Points</label>
+                <input type="number" min="0" value={values.task_points} onChange={e => onChange({ ...values, task_points: e.target.value })} />
+            </div>
+            <div className="task-form-group">
+                <label>Pièce</label>
+                <select value={values.room_id} onChange={e => onChange({ ...values, room_id: e.target.value })}>
+                    <option value="">-- Aucune pièce --</option>
+                    {rooms.map(r => <option key={r.room_id} value={r.room_id}>{r.name}</option>)}
+                </select>
+            </div>
+            <div className="task-form-group">
+                <label>Attribuer à</label>
+                <select value={values.attributed_to} onChange={e => onChange({ ...values, attributed_to: e.target.value })}>
+                    <option value="">-- Non attribué --</option>
+                    {members.map(m => <option key={m.user_id} value={m.user_id}>{m.first_name} {m.last_name}</option>)}
+                </select>
+            </div>
+            <div className="task-form-group">
+                <label>Récurrence</label>
+                <select value={values.recurrence_type} onChange={e => onChange({ ...values, recurrence_type: e.target.value })}>
+                    <option value="">-- Aucune --</option>
+                    <option value="jours">Jours</option>
+                    <option value="semaine">Semaine</option>
+                    <option value="mois">Mois</option>
+                    <option value="années">Années</option>
+                </select>
+            </div>
+            {values.recurrence_type && (
+                <div className="task-form-group full-width">
+                    <label>Tous les combien</label>
+                    <input type="number" min="1" value={values.recurrence_value} onChange={e => onChange({ ...values, recurrence_value: e.target.value })} placeholder={`ex: 2 ${values.recurrence_type}`} />
+                </div>
+            )}
+        </div>
+    );
+}
+
+/* ══════════════════════════════════
+   Page principale
+   ══════════════════════════════════ */
+function TasksPage() {
+    const { isLogged, role, userId, selectedFamily, can } = useContext(AuthContext);
+
+    const [modalMode, setModalMode] = useState(null); // null | "create" | "edit"
     const [taskToEdit, setTaskToEdit] = useState(null);
+    const [taskValues, setTaskValues] = useState(emptyTask);
 
     const [tasks, setTasks] = useState([]);
     const [rooms, setRooms] = useState([]);
     const [members, setMembers] = useState([]);
-    const [period, setPeriod] = useState("semaine"); // aujourd'hui, semaine, mois
+    const [period, setPeriod] = useState("semaine");
 
-    const [newTask, setNewTask] = useState({
-        title: "",
-        description: "",
-        priority: "moyenne",
-        due_date: "",
-        task_points: 0,
-        status: "à faire",
-        is_active: 1,
-        room_id: "",
-        recurrence_type: "",
-        recurrence_value: "",
-        attributed_to: ""
-    });
-
-    // recuperation des tâches, pièces et membres
     useEffect(() => {
         if (!selectedFamily) return;
-        fetchTasks();
-        fetchRooms();
-        fetchMembers();
+        fetchTasks(); fetchRooms(); fetchMembers();
     }, [selectedFamily]);
 
-    const fetchTasks = async () => {
-        try {
-            const response = await getTasksByFamilyId(selectedFamily?.family_id);
-            setTasks(response.data);
-        } catch (error) { console.error(error); }
-    }
+    const fetchTasks   = async () => { try { const r = await getTasksByFamilyId(selectedFamily?.family_id);  setTasks(r.data);   } catch(e) { console.error(e); } };
+    const fetchRooms   = async () => { try { const r = await getRoomsByFamilyId(selectedFamily?.family_id);  setRooms(r.data);   } catch(e) { console.error(e); } };
+    const fetchMembers = async () => { try { const r = await getMembersByFamilyId(selectedFamily?.family_id); setMembers(r.data); } catch(e) { console.error(e); } };
 
-    const fetchRooms = async () => {
-        try {
-            const response = await getRoomsByFamilyId(selectedFamily?.family_id);
-            setRooms(response.data);
-        } catch (error) { console.error(error); }
-    }
+    const cleanValues = (v) => ({
+        ...v,
+        due_date:         v.due_date || null,
+        recurrence_type:  v.recurrence_type || null,
+        recurrence_value: v.recurrence_value || null,
+        room_id:          v.room_id || null,
+        attributed_to:    v.attributed_to ? Number(v.attributed_to) : null,
+        family_id:        selectedFamily?.family_id,
+        created_by:       userId
+    });
 
-    const fetchMembers = async () => {
-        try {
-            const response = await getMembersByFamilyId(selectedFamily?.family_id);
-            setMembers(response.data);
-        } catch (error) { console.error(error); }
-    }
-
-    // Création d'une nouvelle tâche
     const handleCreateTask = async (e) => {
         e.preventDefault();
-        // la galère ici : plusieurs états étaient "" alors que SQL voulais un retour "null" le piege : ici fonction asynchrone donc losque je faisait juste setNewTask ({ ...newTask, due_date : null}) il continué d'envoyer ""
         try {
-            const taskToCreate = {
-                ...newTask,
-                due_date: newTask.due_date === "" ? null : newTask.due_date,
-                recurrence_type: newTask.recurrence_type === "" ? null : newTask.recurrence_type,
-                recurrence_value: newTask.recurrence_value === "" ? null : newTask.recurrence_value,
-                room_id: newTask.room_id === "" ? null : newTask.room_id,
-                attributed_to: newTask.attributed_to === "" ? null : Number(newTask.attributed_to),
-                family_id: selectedFamily?.family_id,
-                created_by: userId
-            };
-            await createTask(taskToCreate);
-            alert("Tâche créée !");
-            setShowForm(false);
-            setNewTask({ title: "", description: "", priority: "moyenne", due_date: "", task_points: 0, status: "à faire", is_active: 1, room_id: "", recurrence_type: "", recurrence_value: "", attributed_to: "" });
-            fetchTasks();
-        } catch (error) {
-            console.error(error);
-            alert("Erreur : " + error.message);
-        }
-    }
+            await createTask(cleanValues(taskValues));
+            closeModal(); fetchTasks();
+        } catch(e) { alert("Erreur : " + e.message); }
+    };
 
-    // filter les tâches 
+    const handleModifTask = async (e) => {
+        e.preventDefault();
+        try {
+            await UpdateTask(taskToEdit.task_id, cleanValues(taskValues));
+            closeModal(); fetchTasks();
+        } catch(e) { alert("Erreur : " + e.message); }
+    };
+
+    const openCreate = () => { setTaskValues(emptyTask); setModalMode("create"); };
+
+    const openEdit = (task) => {
+        setTaskToEdit(task);
+        setTaskValues({
+            title:            task.title ?? "",
+            description:      task.description ?? "",
+            priority:         task.priority ?? "moyenne",
+            due_date:         task.due_date ? task.due_date.slice(0, 10) : "",
+            task_points:      task.task_points ?? 0,
+            status:           task.status ?? "à faire",
+            is_active:        task.is_active ?? 1,
+            room_id:          task.room_id ?? "",
+            recurrence_type:  task.recurrence_type ?? "",
+            recurrence_value: task.recurrence_value ?? "",
+            attributed_to:    task.attributed_to ?? ""
+        });
+        setModalMode("edit");
+    };
+
+    const closeModal = () => { setModalMode(null); setTaskToEdit(null); setTaskValues(emptyTask); };
+
+    const handleAssign = async (task, memberId) => {
+        try { await assignTask(task.task_id, memberId ?? userId); fetchTasks(); }
+        catch(e) { alert("Erreur : " + e.message); }
+    };
+
+    const handleSubmitValidation = async (task) => {
+        try {
+            await updateTaskStatus(task.task_id, { status: "en attente", user_id: task.attributed_to, points: 0, family_id: selectedFamily?.family_id });
+            fetchTasks();
+        } catch(e) { alert("Erreur : " + e.message); }
+    };
+
+    const handleAnnule = async (task) => {
+        try { await assignTask(task.task_id, null); fetchTasks(); }
+        catch(e) { alert("Erreur : " + e.message); }
+    };
+
+    const handleValidateTask = async (task, status) => {
+        try {
+            await updateTaskStatus(task.task_id, { status, user_id: task.attributed_to, points: task.task_points, family_id: selectedFamily?.family_id });
+            fetchTasks();
+        } catch(e) { alert("Erreur : " + e.message); }
+    };
+
+    const handleDeleteTask = async (task) => {
+        if (!window.confirm(`Supprimer "${task.title}" ?`)) return;
+        try { await deleteTask(task.task_id); fetchTasks(); }
+        catch(e) { alert("Erreur : " + e.message); }
+    };
+
+    /* ── Filtres ── */
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -93,309 +186,167 @@ function TasksPage() {
         if (!task.due_date) return true;
         const due = new Date(task.due_date);
         if (period === "aujourd'hui") return due.toDateString() === today.toDateString();
-        if (period === "semaine") {
-            const endOfWeek = new Date(today);
-            endOfWeek.setDate(today.getDate() + (7 - today.getDay()));
-            return due >= today && due <= endOfWeek;
-        }
+        if (period === "semaine") { const end = new Date(today); end.setDate(today.getDate() + (7 - today.getDay())); return due >= today && due <= end; }
         if (period === "mois") return due.getMonth() === today.getMonth() && due.getFullYear() === today.getFullYear();
         return true;
     });
 
-    const unassignedTasks = filteredTasks.filter(t => t.attributed_to === null && t.status !== "en attente" && t.status !== "validé");
-    const tasksByMember = (memberId) => filteredTasks.filter(t => Number(t.attributed_to) === Number(memberId) && t.status !== "en attente" && t.status !== "validé");
-    const tasksToValidate = tasks.filter(t => t.status === "en attente");
+    const unassigned      = filteredTasks.filter(t => t.attributed_to === null && t.status !== "en attente" && t.status !== "validé");
+    const byMember        = (id) => filteredTasks.filter(t => Number(t.attributed_to) === Number(id) && t.status !== "en attente" && t.status !== "validé");
+    const toValidate      = tasks.filter(t => t.status === "en attente");
 
-    // Prendre ou attribuer une tâche (memberId optionnel, sinon utilisateur courant)
-    const handleAssign = async (task, memberId) => {
-        try {
-            await assignTask(task.task_id, memberId ?? userId);
-            fetchTasks();
-        } catch (error) {
-            console.error(error);
-            alert("Erreur : " + error.message);
-        }
+    if (!isLogged || role === "temp") {
+        return (
+            <div className="tasks-page">
+                <EmptyState icon="🔒" title="Accès refusé" description="Vous n'avez pas les droits pour afficher les tâches." />
+            </div>
+        );
     }
-
-    // Soumettre une tâche à validation
-    const handleSubmitValidation = async (task) => {
-        try {
-            await updateTaskStatus(task.task_id, {
-                status: "en attente",
-                user_id: task.attributed_to,
-                points: 0,
-                family_id: selectedFamily?.family_id
-            });
-            fetchTasks();
-        } catch (error) {
-            console.error(error);
-            alert("Erreur : " + error.message);
-        }
-    }
-
-    // se désengager d'une tâche
-    const handleAnnule = async (task) => {
-        try {
-            await assignTask(task.task_id, null);
-            fetchTasks();
-        } catch (error) {
-            console.error(error);
-            alert("Erreur : " + error.message);
-        }
-    }
-
-    // Validation des tasks
-    const handleValidateTask = async (task, status) => {
-        try {
-            await updateTaskStatus(task.task_id, {
-                status: status,
-                user_id: task.attributed_to,
-                points: task.task_points,
-                family_id: selectedFamily?.family_id
-            });
-            alert(status === "validé" ? "Tâche validée ! Points attribués ✅" : "Tâche refusée ❌");
-            fetchTasks();
-        } catch (error) {
-            console.error(error);
-            alert("Erreur : " + error.message);
-        }
-    }
-
-    // Supprimer une tâche
-    const handleDeleteTask = async (task) => {
-        if (!window.confirm(`Supprimer "${task.title}" ?`)) return;
-        try {
-            await deleteTask(task.task_id);
-            fetchTasks();
-        } catch (error) {
-            console.error(error);
-            alert("Erreur : " + error.message);
-        }
-    }
-
-    // Ouvrir le formulaire de modification pré-rempli
-    const handleOpenModifForm = (task) => {
-        setTaskToEdit(task);
-        setNewTask({
-            title: task.title ?? "",
-            description: task.description ?? "",
-            priority: task.priority ?? "moyenne",
-            due_date: task.due_date ? task.due_date.slice(0, 10) : "",
-            task_points: task.task_points ?? 0,
-            status: task.status ?? "à faire",
-            is_active: task.is_active ?? 1,
-            room_id: task.room_id ?? "",
-            recurrence_type: task.recurrence_type ?? "",
-            recurrence_value: task.recurrence_value ?? "",
-            attributed_to: task.attributed_to ?? ""
-        });
-        setShowForm(false);
-        setModifForm(true);
-    };
-
-    // Soumettre la modification
-    const handleModifTask = async (e) => {
-        e.preventDefault();
-        try {
-            await UpdateTask(taskToEdit.task_id, {
-                ...newTask,
-                due_date: newTask.due_date === "" ? null : newTask.due_date,
-                recurrence_type: newTask.recurrence_type === "" ? null : newTask.recurrence_type,
-                recurrence_value: newTask.recurrence_value === "" ? null : newTask.recurrence_value,
-                room_id: newTask.room_id === "" ? null : newTask.room_id,
-                attributed_to: newTask.attributed_to === "" ? null : Number(newTask.attributed_to),
-                family_id: selectedFamily?.family_id,
-                created_by: userId
-            });
-            alert("Tâche modifiée !");
-            setModifForm(false);
-            setTaskToEdit(null);
-            setNewTask({ title: "", description: "", priority: "moyenne", due_date: "", task_points: 0, status: "à faire", is_active: 1, room_id: "", recurrence_type: "", recurrence_value: "" });
-            fetchTasks();
-        } catch (error) {
-            console.error(error);
-            alert("Erreur : " + error.message);
-        }
-    };
 
     return (
-        <>
-            {(isLogged && role !== "temp") ? (
-                <>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                        <h1>Tâches</h1>
-                        {can("create_task") && <button onClick={() => setShowForm(!showForm)}>+ Ajouter une tâche</button>}
-                    </div>
+        <div className="tasks-page">
 
-                    {/* Onglets de période */}
-                    <div className="btns">
-                        <button className={period === "toutes" ? "activebtn" : ""} onClick={() => setPeriod("toutes")}>Toutes</button>
-                        <button className={period === "aujourd'hui" ? "activebtn" : ""} onClick={() => setPeriod("aujourd'hui")}>Aujourd'hui</button>
-                        <button className={period === "semaine" ? "activebtn" : ""} onClick={() => setPeriod("semaine")}>Cette semaine</button>
-                        <button className={period === "mois" ? "activebtn" : ""} onClick={() => setPeriod("mois")}>Ce mois</button>
-                        {can("validate_task") && (
-                            <button className="validebtn" onClick={() => setPeriod("validation")}>
-                                ✅ À valider {tasksToValidate.length > 0 && `(${tasksToValidate.length})`}
-                            </button>
-                        )}
-                    </div>
+            {/* ── Header ── */}
+            <PageHeader
+                title="Tâches"
+                subtitle={selectedFamily?.name}
+                action={can("create_task") && (
+                    <button className="btn btn-primary" onClick={openCreate}>
+                        + Nouvelle tâche
+                    </button>
+                )}
+            />
 
-                    {/* Formulaire création tâche */}
-                    {showForm ? (
-                        <form onSubmit={handleCreateTask}>
-                            <h3>Création d'une nouvelle tâche</h3>
-                            <div><label>Titre : <input value={newTask.title} onChange={e => setNewTask({ ...newTask, title: e.target.value })} required /></label></div>
-                            <div><label>Description : <input value={newTask.description} onChange={e => setNewTask({ ...newTask, description: e.target.value })} /></label></div>
-                            <div>
-                                <label>Priorité :
-                                    <select value={newTask.priority} onChange={e => setNewTask({ ...newTask, priority: e.target.value })}>
-                                        <option value="basse">Basse</option>
-                                        <option value="moyenne">Moyenne</option>
-                                        <option value="haute">Haute</option>
-                                    </select>
-                                </label>
-                            </div>
-                            <div><label>Date limite : <input type="date" value={newTask.due_date} onChange={e => setNewTask({ ...newTask, due_date: e.target.value })} /></label></div>
-                            <div><label>Points : <input type="number" value={newTask.task_points} onChange={e => setNewTask({ ...newTask, task_points: e.target.value })} /></label></div>
-                            <div>
-                                <label>Pièce :
-                                    <select value={newTask.room_id} onChange={e => setNewTask({ ...newTask, room_id: e.target.value })}>
-                                        <option value="">-- Sélectionner une pièce --</option>
-                                        {rooms.map(room => <option key={room.room_id} value={room.room_id}>{room.name}</option>)}
-                                    </select>
-                                </label>
-                            </div>
-                            <div>
-                                <label>Attribuer à :
-                                    <select value={newTask.attributed_to} onChange={e => setNewTask({ ...newTask, attributed_to: e.target.value })}>
-                                        <option value="">-- Non attribué --</option>
-                                        {members.map(m => <option key={m.user_id} value={m.user_id}>{m.first_name}</option>)}
-                                    </select>
-                                </label>
-                            </div>
-                            <div>
-                                <label>Récurrence :
-                                    <select value={newTask.recurrence_type} onChange={e => setNewTask({ ...newTask, recurrence_type: e.target.value })}>
-                                        <option value="">-- Pas de récurrence --</option>
-                                        <option value="jours">Jours</option>
-                                        <option value="semaine">Semaine</option>
-                                        <option value="mois">Mois</option>
-                                        <option value="années">Années</option>
-                                    </select>
-                                </label>
-                            </div>
-                            {newTask.recurrence_type && (
-                                <div><label>Tous les combien : <input type="number" min="1" value={newTask.recurrence_value} onChange={e => setNewTask({ ...newTask, recurrence_value: e.target.value })} placeholder={`ex: 2 ${newTask.recurrence_type}`} /></label></div>
+            {/* ── Onglets période ── */}
+            <div className="btns">
+                {["toutes", "aujourd'hui", "semaine", "mois"].map(p => (
+                    <button key={p} className={period === p ? "activebtn" : ""} onClick={() => setPeriod(p)}>
+                        {p === "toutes" ? "Toutes" : p === "aujourd'hui" ? "Aujourd'hui" : p === "semaine" ? "Cette semaine" : "Ce mois"}
+                    </button>
+                ))}
+                {can("validate_task") && (
+                    <button className={period === "validation" ? "validebtn activebtn" : "validebtn"} onClick={() => setPeriod("validation")}>
+                        ✅ À valider {toValidate.length > 0 && <span className="kanban-column-count" style={{ marginLeft: 4 }}>{toValidate.length}</span>}
+                    </button>
+                )}
+            </div>
+
+            {/* ── Kanban ── */}
+            {period !== "validation" && (
+                <div className="kanban-board">
+                    {/* Colonne non attribuée */}
+                    <div className="kanban-column">
+                        <div className="kanban-column-header">
+                            Non attribuées
+                            <span className="kanban-column-count">{unassigned.length}</span>
+                        </div>
+                        <div className="kanban-column-body">
+                            {unassigned.length > 0 ? unassigned.map(task => (
+                                <TasksCard key={task.task_id} task={task}
+                                    members={can("assign_task") ? members : null}
+                                    onAssign={can("assign_task") ? handleAssign : null}
+                                    onUpdate={can("edit_task") ? openEdit : null}
+                                    onDelete={can("delete_task") ? handleDeleteTask : null}
+                                />
+                            )) : (
+                                <p className="empty-state">Aucune tâche</p>
                             )}
-                            <button type="submit">Créer la tâche</button>
-                            <button type="button" onClick={() => setShowForm(false)}>Annuler</button>
-                        </form>
-                    ) :
-                        // formulaire de modification de la tâche
-                        (modifForm && (
-                            <form onSubmit={handleModifTask}>
-                                <h3>Modification de : {taskToEdit?.title}</h3>
-                                <div><label>Titre : <input value={newTask.title} onChange={e => setNewTask({ ...newTask, title: e.target.value })} required /></label></div>
-                                <div><label>Description : <input value={newTask.description} onChange={e => setNewTask({ ...newTask, description: e.target.value })} /></label></div>
-                                <div>
-                                    <label>Priorité :
-                                        <select value={newTask.priority} onChange={e => setNewTask({ ...newTask, priority: e.target.value })}>
-                                            <option value="basse">Basse</option>
-                                            <option value="moyenne">Moyenne</option>
-                                            <option value="haute">Haute</option>
-                                        </select>
-                                    </label>
-                                </div>
-                                <div><label>Date limite : <input type="date" value={newTask.due_date} onChange={e => setNewTask({ ...newTask, due_date: e.target.value })} /></label></div>
-                                <div><label>Points : <input type="number" value={newTask.task_points} onChange={e => setNewTask({ ...newTask, task_points: e.target.value })} /></label></div>
-                                <div>
-                                    <label>Pièce :
-                                        <select value={newTask.room_id} onChange={e => setNewTask({ ...newTask, room_id: e.target.value })}>
-                                            <option value="">-- Sélectionner une pièce --</option>
-                                            {rooms.map(room => <option key={room.room_id} value={room.room_id}>{room.name}</option>)}
-                                        </select>
-                                    </label>
-                                </div>
-                                <div>
-                                    <label>Récurrence :
-                                        <select value={newTask.recurrence_type} onChange={e => setNewTask({ ...newTask, recurrence_type: e.target.value })}>
-                                            <option value="">-- Pas de récurrence --</option>
-                                            <option value="jours">Jours</option>
-                                            <option value="semaine">Semaine</option>
-                                            <option value="mois">Mois</option>
-                                            <option value="années">Années</option>
-                                        </select>
-                                    </label>
-                                </div>
-                                {newTask.recurrence_type && (
-                                    <div><label>Tous les combien : <input type="number" min="1" value={newTask.recurrence_value} onChange={e => setNewTask({ ...newTask, recurrence_value: e.target.value })} placeholder={`ex: 2 ${newTask.recurrence_type}`} /></label></div>
-                                )}
-                                <div>
-                                    <label>Attribuer à :
-                                        <select value={newTask.attributed_to} onChange={e => setNewTask({ ...newTask, attributed_to: e.target.value })}>
-                                            <option value="">-- Non attribué --</option>
-                                            {members.map(m => <option key={m.user_id} value={m.user_id}>{m.first_name}</option>)}
-                                        </select>
-                                    </label>
-                                </div>
-                                <button type="submit">Modifier la tâche</button>
-                                <button type="button" onClick={() => setModifForm(false)}>Annuler</button>
-                            </form>
-                        ))}
+                        </div>
+                    </div>
 
-                    {/* Tableau Kanban */}
-                    {period !== "validation" && (
-                        <div style={{ display: "flex", gap: "15px", overflowX: "auto", marginTop: "20px" }}>
-
-                            {/* Colonne À attribuer */}
-                            <div style={{ minWidth: "200px", background: "#f0f0f0", padding: "10px", borderRadius: "8px" }}>
-                                <h3>À attribuer ({unassignedTasks.length})</h3>
-                                {unassignedTasks.length > 0 ? (
-                                    unassignedTasks.map(task => <TasksCard key={task.task_id} task={task} members={can("assign_task") ? members : null} onAssign={can("assign_task") ? handleAssign : null} onUpdate={can("edit_task") ? handleOpenModifForm : null} onDelete={can("delete_task") ? handleDeleteTask : null} />)
-                                ) : (
-                                    <p>Aucune tâche</p>
+                    {/* Colonnes par membre */}
+                    {members.map(member => (
+                        <div key={member.user_id} className="kanban-column">
+                            <div className="kanban-column-header">
+                                {member.first_name}
+                                <span className="kanban-column-count">{byMember(member.user_id).length}</span>
+                            </div>
+                            <div className="kanban-column-body">
+                                {byMember(member.user_id).length > 0 ? byMember(member.user_id).map(task => (
+                                    <TasksCard key={task.task_id} task={task}
+                                        onAnnule={handleAnnule}
+                                        onUpdate={can("edit_task") ? openEdit : null}
+                                        onSubmitValidation={can("submit_task") ? handleSubmitValidation : null}
+                                        onDelete={can("delete_task") ? handleDeleteTask : null}
+                                    />
+                                )) : (
+                                    <p className="empty-state">Aucune tâche</p>
                                 )}
                             </div>
+                        </div>
+                    ))}
+                </div>
+            )}
 
-                            {/* Colonnes par membre */}
-                            {members.map(member => (
-                                <div key={member.user_id} style={{ minWidth: "200px", background: "#f0f0f0", padding: "10px", borderRadius: "8px" }}>
-                                    <h3>{member.first_name} ({tasksByMember(member.user_id).length})</h3>
-                                    {tasksByMember(member.user_id).length > 0 ? (
-                                        tasksByMember(member.user_id).map(task => <TasksCard key={task.task_id} task={task} onAnnule={handleAnnule} onUpdate={can("edit_task") ? handleOpenModifForm : null} onSubmitValidation={can("submit_task") ? handleSubmitValidation : null} onDelete={can("delete_task") ? handleDeleteTask : null} />)
-                                    ) : (
-                                        <p>Aucune tâche</p>
-                                    )}
+            {/* ── Page validation ── */}
+            {period === "validation" && (
+                <div className="validation-page">
+                    <h2>Tâches soumises à validation</h2>
+                    {toValidate.length > 0 ? (
+                        <div className="validation-list">
+                            {toValidate.map(task => (
+                                <div key={task.task_id} className="validation-item">
+                                    <div className="validation-item-info">
+                                        <span className="validation-item-title">{task.title}</span>
+                                        <span className="validation-item-meta">
+                                            {task.first_name && `Soumis par ${task.first_name}`}
+                                            {task.task_points > 0 && ` · ⭐ ${task.task_points} pts`}
+                                        </span>
+                                    </div>
+                                    <div className="validation-actions">
+                                        <button className="btn btn-primary" style={{ background: "#dcfce7", color: "#16a34a" }}
+                                            onClick={() => handleValidateTask(task, "validé")}>
+                                            ✅ Valider
+                                        </button>
+                                        <button className="btn btn-danger" onClick={() => handleValidateTask(task, "à faire")}>
+                                            ❌ Refuser
+                                        </button>
+                                    </div>
                                 </div>
                             ))}
                         </div>
+                    ) : (
+                        <EmptyState icon="✅" title="Tout est à jour !" description="Aucune tâche en attente de validation." />
                     )}
-
-                    {/* Page validation */}
-                    {period === "validation" && (
-                        <div style={{ marginTop: "20px" }}>
-                            <h2>Tâches à valider</h2>
-                            {tasksToValidate.length > 0 ? (
-                                tasksToValidate.map(task => (
-                                    <div key={task.task_id} style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "10px" }}>
-                                        <TasksCard task={task} />
-                                        <div>
-                                            <button onClick={() => handleValidateTask(task, "validé")}>✅ Valider</button>
-                                            <button onClick={() => handleValidateTask(task, "à faire")}>❌ Refuser</button>
-                                        </div>
-                                    </div>
-                                ))
-                            ) : (
-                                <p>Aucune tâche à valider.</p>
-                            )}
-                        </div>
-                    )}
-                </>
-            ) : (
-                <p>Vous n'avez pas les droits pour afficher les tâches</p>
+                </div>
             )}
-        </>
-    )
+
+            {/* ── Modal création ── */}
+            <Modal
+                isOpen={modalMode === "create"}
+                onClose={closeModal}
+                title="Nouvelle tâche"
+                footer={
+                    <>
+                        <button className="btn btn-secondary" onClick={closeModal}>Annuler</button>
+                        <button className="btn btn-primary" form="task-form-create" type="submit">Créer la tâche</button>
+                    </>
+                }
+            >
+                <form id="task-form-create" onSubmit={handleCreateTask}>
+                    <TaskForm values={taskValues} onChange={setTaskValues} rooms={rooms} members={members} />
+                </form>
+            </Modal>
+
+            {/* ── Modal modification ── */}
+            <Modal
+                isOpen={modalMode === "edit"}
+                onClose={closeModal}
+                title={`Modifier : ${taskToEdit?.title}`}
+                footer={
+                    <>
+                        <button className="btn btn-secondary" onClick={closeModal}>Annuler</button>
+                        <button className="btn btn-primary" form="task-form-edit" type="submit">Enregistrer</button>
+                    </>
+                }
+            >
+                <form id="task-form-edit" onSubmit={handleModifTask}>
+                    <TaskForm values={taskValues} onChange={setTaskValues} rooms={rooms} members={members} />
+                </form>
+            </Modal>
+
+        </div>
+    );
 }
 
 export default TasksPage;

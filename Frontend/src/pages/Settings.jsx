@@ -2,8 +2,9 @@ import { useContext, useEffect, useState } from "react";
 import AuthContext from "../Contexte/AuthContext";
 import { createRoom, deleteRoom, getRoomsByFamilyId, updateRoom, updateUserById, getRolesByFamilyId, createRole, deleteRole, getPermissionsByRoleId, updatePermissions } from "../services/service";
 import { jwtDecode } from "jwt-decode";
+import PageHeader from "../components/ui/PageHeader";
+import "./Settings.css";
 
-// Traduction des actions en français pour l'affichage dans la grille
 const ACTION_LABELS = {
     create_task: "Créer une tâche",
     edit_task: "Modifier une tâche",
@@ -29,13 +30,23 @@ function Settings() {
     const [password, setPassword] = useState("");
     const [avatarUrl, setAvatarUrl] = useState(user?.avatar_url || "");
 
-
-    //Ajout d'une nouvelle piece 
+    // Pièces
     const [rooms, setRooms] = useState([]);
-    const [newRoom, setNewRoom] = useState({ name: "", color: "#000000" });
+    const [newRoom, setNewRoom] = useState({ name: "", color: "#6366f1" });
+    const [editingRoom, setEditingRoom] = useState(null);
+
+    // Rôles & permissions
+    const [roles, setRoles] = useState([]);
+    const [newRoleName, setNewRoleName] = useState("");
+    const [selectedRole, setSelectedRole] = useState(null);
+    const [permissions, setPermissions] = useState([]);
 
     useEffect(() => {
         if (families.length > 0) fetchRooms();
+    }, [selectedFamily]);
+
+    useEffect(() => {
+        if (selectedFamily) fetchRoles();
     }, [selectedFamily]);
 
     const fetchRooms = async () => {
@@ -45,7 +56,38 @@ function Settings() {
         } catch (error) {
             console.error(error);
         }
-    }
+    };
+
+    const fetchRoles = async () => {
+        try {
+            const response = await getRolesByFamilyId(selectedFamily.family_id);
+            setRoles(response.data);
+        } catch (error) {
+            console.error(error);
+        }
+    };
+
+    const handleUpdateProfile = async (e) => {
+        e.preventDefault();
+        if (!firstName.trim()) { alert("Le prénom est obligatoire"); return; }
+        try {
+            const response = await updateUserById(userId, {
+                first_name: firstName,
+                last_name: lastName,
+                email: email,
+                avatar_url: avatarUrl,
+                password: password || null
+            });
+            localStorage.setItem('token', response.data.token);
+            const decodedToken = jwtDecode(response.data.token);
+            setRole(decodedToken.role);
+            setMail(decodedToken.email);
+            setUserId(decodedToken.user_id);
+            alert("Profil mis à jour !");
+        } catch (error) {
+            alert("Erreur : " + error.message);
+        }
+    };
 
     const handleCreateRoom = async (e) => {
         e.preventDefault();
@@ -57,47 +99,13 @@ function Settings() {
                 is_active: 1,
                 family_id: selectedFamily?.family_id
             });
-            alert("Pièce ajoutée !");
-            setNewRoom({ name: "", color: "#000000" });
+            setNewRoom({ name: "", color: "#6366f1" });
             fetchRooms();
         } catch (error) {
-            console.error(error);
             alert("Erreur : " + error.message);
         }
-    }
+    };
 
-
-    //Mise à jour du profil 
-    const handleUpdateProfile = async (e) => {
-        e.preventDefault();
-        if (!firstName.trim()) {
-            alert("Le prénom est obligatoire");
-            return;
-        }
-        try {
-            const response = await updateUserById(userId, {
-                first_name: firstName,
-                last_name: lastName,
-                email: email,
-                avatar_url: avatarUrl,
-                password: password || null
-            });
-
-            // Stocker le nouveau token
-            localStorage.setItem('token', response.data.token);
-            const decodedToken = jwtDecode(response.data.token);
-            setRole(decodedToken.role);
-            setMail(decodedToken.email);
-            setUserId(decodedToken.user_id);
-
-            alert("Profil mis à jour !");
-        } catch (error) {
-            console.error(error);
-            alert("Erreur : " + error.message);
-        }
-    }
-
-    //supprimer une piece 
     const handleDeleteRoom = async (roomId) => {
         if (!confirm("Supprimer cette pièce ?")) return;
         try {
@@ -106,40 +114,24 @@ function Settings() {
         } catch (error) {
             alert("Erreur : " + error.message);
         }
-    }
+    };
 
-    // --- GESTION DES RÔLES ---
-    const [roles, setRoles] = useState([]);
-    const [newRoleName, setNewRoleName] = useState("");
-    // Rôle sélectionné pour afficher sa grille de permissions
-    const [selectedRole, setSelectedRole] = useState(null);
-    // Permissions du rôle sélectionné : tableau de { action, allowed }
-    const [permissions, setPermissions] = useState([]);
-
-    // Charge les rôles de la famille quand la famille change
-    useEffect(() => {
-        if (selectedFamily) fetchRoles();
-    }, [selectedFamily]);
-
-    const fetchRoles = async () => {
+    const handleUpdateRoom = async (e) => {
+        e.preventDefault();
         try {
-            const response = await getRolesByFamilyId(selectedFamily.family_id);
-            setRoles(response.data);
+            await updateRoom(editingRoom.room_id, { name: editingRoom.name, color: editingRoom.color });
+            setEditingRoom(null);
+            fetchRooms();
         } catch (error) {
-            console.error(error);
+            alert("Erreur : " + error.message);
         }
     };
 
-    // Crée un nouveau rôle et génère ses 14 permissions automatiquement (côté back)
     const handleCreateRole = async (e) => {
         e.preventDefault();
         if (!newRoleName.trim()) return;
         try {
-            await createRole({
-                role: newRoleName.trim(),
-                family_id: selectedFamily.family_id,
-                is_active: 1
-            });
+            await createRole({ role: newRoleName.trim(), family_id: selectedFamily.family_id, is_active: 1 });
             setNewRoleName("");
             fetchRoles();
         } catch (error) {
@@ -147,12 +139,10 @@ function Settings() {
         }
     };
 
-    // Supprime un rôle (soft-delete) et ses permissions associées
     const handleDeleteRole = async (roleId) => {
         if (!window.confirm("Supprimer ce rôle ?")) return;
         try {
             await deleteRole(roleId);
-            // Si le rôle supprimé était sélectionné, on ferme la grille
             if (selectedRole?.role_id === roleId) setSelectedRole(null);
             fetchRoles();
         } catch (error) {
@@ -160,31 +150,27 @@ function Settings() {
         }
     };
 
-    // Charge les permissions d'un rôle et affiche la grille
-    const handleSelectRole = async (role) => {
-        // Si on clique sur le rôle déjà ouvert → fermer la grille
-        if (selectedRole?.role_id === role.role_id) {
+    const handleSelectRole = async (r) => {
+        if (selectedRole?.role_id === r.role_id) {
             setSelectedRole(null);
             setPermissions([]);
             return;
         }
         try {
-            const response = await getPermissionsByRoleId(role.role_id);
-            setSelectedRole(role);
+            const response = await getPermissionsByRoleId(r.role_id);
+            setSelectedRole(r);
             setPermissions(response.data);
         } catch (error) {
             alert("Erreur : " + error.message);
         }
     };
 
-    // Coche / décoche une permission dans la grille (mise à jour locale uniquement)
     const handleTogglePermission = (action) => {
         setPermissions(prev =>
             prev.map(p => p.action === action ? { ...p, allowed: !p.allowed } : p)
         );
     };
 
-    // Envoie toutes les permissions modifiées au backend
     const handleSavePermissions = async () => {
         try {
             await updatePermissions(selectedRole.role_id, permissions);
@@ -194,164 +180,192 @@ function Settings() {
         }
     };
 
-    //modifier une piece
-    const [editingRoom, setEditingRoom] = useState(null)
-    const handleUpdateRoom = async (e) => {
-        e.preventDefault();
-        try {
-            await updateRoom(editingRoom.room_id, {
-                name: editingRoom.name,
-                color: editingRoom.color
-            });
-            alert("Pièce mise à jour !");
-            setEditingRoom(null);
-            fetchRooms();
-        } catch (error) {
-            alert("Erreur : " + error.message);
-        }
-    }
-
     return (
-        <>
-            <h2>Paramètres du profil</h2>
-            <form onSubmit={handleUpdateProfile}>
-                <div>
-                    <label>
-                        Prénom :
-                        <input value={firstName} onChange={e => setFirstName(e.target.value)} />
-                    </label>
-                </div>
-                <div>
-                    <label>
-                        Nom :
-                        <input value={lastName} onChange={e => setLastName(e.target.value)} />
-                    </label>
-                </div>
-                <div>
-                    <label>
-                        Email :
-                        <input type="email" value={email} onChange={e => setEmail(e.target.value)} />
-                    </label>
-                </div>
-                <div>
-                    <label>
-                        Mot de passe :
-                        <input type="password" value={password} onChange={e => setPassword(e.target.value)} />
-                    </label>
-                </div>
-                <div>
-                    <label>
-                        Avatar URL :
-                        <input value={avatarUrl} onChange={e => setAvatarUrl(e.target.value)} />
-                    </label>
-                </div>
-                <button type="submit">Sauvegarder</button>
-            </form>
-            <hr />
-            
-            <h2>Pièces de la maison</h2>
+        <div className="settings-page">
+            <PageHeader title="Paramètres" subtitle="Profil, pièces et permissions" />
 
-            <ul>
-                {rooms.map((room) => (
-                    <li key={room.room_id}>
-                        {editingRoom?.room_id === room.room_id ? (
-                            // Formulaire de modification
-                            <form onSubmit={handleUpdateRoom}>
+            {/* ── Profil ── */}
+            <div className="settings-section">
+                <div className="settings-section-header">
+                    <h2 className="settings-section-title">Mon profil</h2>
+                </div>
+                <div className="settings-section-body">
+                    <form onSubmit={handleUpdateProfile} className="profile-form">
+                        <div className="profile-form-group">
+                            <label>Prénom</label>
+                            <input value={firstName} onChange={e => setFirstName(e.target.value)} required />
+                        </div>
+                        <div className="profile-form-group">
+                            <label>Nom</label>
+                            <input value={lastName} onChange={e => setLastName(e.target.value)} />
+                        </div>
+                        <div className="profile-form-group">
+                            <label>Email</label>
+                            <input type="email" value={email} onChange={e => setEmail(e.target.value)} />
+                        </div>
+                        <div className="profile-form-group">
+                            <label>Nouveau mot de passe</label>
+                            <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Laisser vide pour ne pas changer" />
+                        </div>
+                        <div className="profile-form-group full-width">
+                            <label>URL de l'avatar</label>
+                            <input value={avatarUrl} onChange={e => setAvatarUrl(e.target.value)} placeholder="https://..." />
+                        </div>
+                        <div className="profile-form-actions">
+                            <button type="submit" className="btn btn-primary">Sauvegarder</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            {/* ── Pièces de la maison ── */}
+            <div className="settings-section">
+                <div className="settings-section-header">
+                    <h2 className="settings-section-title">Pièces de la maison</h2>
+                </div>
+                <div className="settings-section-body">
+                    {rooms.length > 0 ? (
+                        <div className="rooms-grid">
+                            {rooms.map((room) => (
+                                <div key={room.room_id} className="room-card">
+                                    {editingRoom?.room_id === room.room_id ? (
+                                        <form onSubmit={handleUpdateRoom} className="room-edit-form">
+                                            <input
+                                                type="text"
+                                                value={editingRoom.name}
+                                                onChange={e => setEditingRoom({ ...editingRoom, name: e.target.value })}
+                                            />
+                                            <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                                                <input
+                                                    type="color"
+                                                    value={editingRoom.color}
+                                                    onChange={e => setEditingRoom({ ...editingRoom, color: e.target.value })}
+                                                />
+                                                <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>Sauvegarder</button>
+                                                <button type="button" className="btn btn-secondary" onClick={() => setEditingRoom(null)}>Annuler</button>
+                                            </div>
+                                        </form>
+                                    ) : (
+                                        <>
+                                            <div className="room-card-name">
+                                                <span className="room-color-dot" style={{ background: room.color }} />
+                                                {room.name}
+                                            </div>
+                                            <div className="room-card-actions">
+                                                {can("create_room") && (
+                                                    <button
+                                                        style={{ background: "var(--primary-light)", color: "var(--primary)" }}
+                                                        onClick={() => setEditingRoom(room)}
+                                                    >
+                                                        Modifier
+                                                    </button>
+                                                )}
+                                                {can("delete_room") && (
+                                                    <button
+                                                        style={{ background: "var(--danger-light)", color: "var(--danger)" }}
+                                                        onClick={() => handleDeleteRoom(room.room_id)}
+                                                    >
+                                                        Supprimer
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <p className="empty-state">Aucune pièce configurée.</p>
+                    )}
+
+                    {can("create_room") && (
+                        <form onSubmit={handleCreateRoom} className="room-create-form">
+                            <h4>Ajouter une pièce</h4>
+                            <div className="room-create-row">
                                 <input
-                                    value={editingRoom.name}
-                                    onChange={e => setEditingRoom({ ...editingRoom, name: e.target.value })}
+                                    type="text"
+                                    value={newRoom.name}
+                                    onChange={e => setNewRoom({ ...newRoom, name: e.target.value })}
+                                    placeholder="Nom de la pièce..."
+                                    required
                                 />
                                 <input
                                     type="color"
-                                    value={editingRoom.color}
-                                    onChange={e => setEditingRoom({ ...editingRoom, color: e.target.value })}
+                                    value={newRoom.color}
+                                    onChange={e => setNewRoom({ ...newRoom, color: e.target.value })}
+                                    title="Couleur"
                                 />
-                                <button type="submit">Sauvegarder</button>
-                                <button type="button" onClick={() => setEditingRoom(null)}>Annuler</button>
-                            </form>
-                        ) : (
-                            // Affichage normal
-                            <>
-                                <span style={{ color: room.color }}>■</span> {room.name}
-                                {can("create_room") && <button onClick={() => setEditingRoom(room)}> Modifier</button>}
-                                {can("delete_room") && <button onClick={() => handleDeleteRoom(room.room_id)}> Supprimer</button>}
-                            </>
-                        )}
-                    </li>
-                ))}
-            </ul>
+                                <button type="submit" className="btn btn-primary">Ajouter</button>
+                            </div>
+                        </form>
+                    )}
+                </div>
+            </div>
 
-            {can("create_room") && (
-                <form onSubmit={handleCreateRoom}>
-                    <div>
-                        <label>Nom de la pièce :
-                            <input value={newRoom.name} onChange={e => setNewRoom({ ...newRoom, name: e.target.value })} required />
-                        </label>
-                    </div>
-                    <div>
-                        <label>Couleur :
-                            <input type="color" value={newRoom.color} onChange={e => setNewRoom({ ...newRoom, color: e.target.value })} />
-                        </label>
-                    </div>
-                    <button type="submit">Ajouter la pièce</button>
-                </form>
-            )}
-
-            {/* Section rôles — visible si permission manage_roles */}
+            {/* ── Rôles & permissions ── */}
             {can("manage_roles") && (
-                <>
-                    <hr />
-                    <h2>Rôles de la famille</h2>
-
-                    {/* Liste des rôles existants */}
-                    <ul>
-                        {roles.map(r => (
-                            <li key={r.role_id}>
-                                <button onClick={() => handleSelectRole(r)}>
-                                    {r.role} {selectedRole?.role_id === r.role_id ? "▲" : "▼"}
-                                </button>
-                                <button onClick={() => handleDeleteRole(r.role_id)} style={{ color: "red", marginLeft: "8px" }}>
-                                    Supprimer
-                                </button>
-
-                                {/* Grille de permissions — s'affiche sous le rôle sélectionné */}
-                                {selectedRole?.role_id === r.role_id && (
-                                    <div style={{ marginTop: "10px" }}>
-                                        <table>
-                                            <tbody>
-                                                {permissions.map(p => (
-                                                    <tr key={p.action}>
-                                                        <td>{ACTION_LABELS[p.action] || p.action}</td>
-                                                        <td>
-                                                            <input
-                                                                type="checkbox"
-                                                                checked={!!p.allowed}
-                                                                onChange={() => handleTogglePermission(p.action)}
-                                                            />
-                                                        </td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                        <button onClick={handleSavePermissions}>Enregistrer</button>
+                <div className="settings-section">
+                    <div className="settings-section-header">
+                        <h2 className="settings-section-title">Rôles de la famille</h2>
+                    </div>
+                    <div className="settings-section-body">
+                        <div className="roles-list">
+                            {roles.map(r => (
+                                <div key={r.role_id} className={`role-item${selectedRole?.role_id === r.role_id ? " open" : ""}`}>
+                                    <div className="role-item-header" onClick={() => handleSelectRole(r)}>
+                                        <span className="role-item-name">{r.role}</span>
+                                        <div className="role-item-actions">
+                                            <button
+                                                className="btn btn-danger"
+                                                style={{ padding: "4px 10px", fontSize: "0.75rem" }}
+                                                onClick={ev => { ev.stopPropagation(); handleDeleteRole(r.role_id); }}
+                                            >
+                                                Supprimer
+                                            </button>
+                                            <span className="role-item-chevron">▼</span>
+                                        </div>
                                     </div>
-                                )}
-                            </li>
-                        ))}
-                    </ul>
 
-                    {/* Formulaire de création d'un nouveau rôle */}
-                    <form onSubmit={handleCreateRole}>
-                        <input
-                            placeholder="Nom du rôle (ex: Papa)"
-                            value={newRoleName}
-                            onChange={e => setNewRoleName(e.target.value)}
-                        />
-                        <button type="submit">Créer le rôle</button>
-                    </form>
-                </>
+                                    {selectedRole?.role_id === r.role_id && (
+                                        <div className="permissions-panel">
+                                            <div className="permissions-grid">
+                                                {permissions.map(p => (
+                                                    <div
+                                                        key={p.action}
+                                                        className={`permission-row${p.allowed ? " allowed" : ""}`}
+                                                        onClick={() => handleTogglePermission(p.action)}
+                                                    >
+                                                        <span className="permission-label">{ACTION_LABELS[p.action] || p.action}</span>
+                                                        <div className="permission-toggle">
+                                                            {p.allowed ? "✓" : ""}
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                            <div className="permissions-save-row">
+                                                <button className="btn btn-primary" onClick={handleSavePermissions}>
+                                                    Enregistrer les permissions
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+
+                        <form onSubmit={handleCreateRole} className="new-role-form">
+                            <input
+                                placeholder="Nom du nouveau rôle (ex : Papa)"
+                                value={newRoleName}
+                                onChange={e => setNewRoleName(e.target.value)}
+                            />
+                            <button type="submit" className="btn btn-primary">Créer</button>
+                        </form>
+                    </div>
+                </div>
             )}
-        </>
-    )
+        </div>
+    );
 }
+
 export default Settings;

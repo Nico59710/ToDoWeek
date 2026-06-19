@@ -1,28 +1,233 @@
+/* ── Page Tâches ── */
+.tasks-page {
+    padding: 32px 36px;
+}
+
+/* ── Header ── */
+.tasks-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+}
+
+.tasks-header h1 {
+    font-size: 1.6rem;
+    font-weight: 800;
+    color: var(--text-primary);
+}
+
+/* ── Onglets de période ── */
 .btns {
     display: flex;
-    gap: 5px;
-   justify-content: space-around;
+    gap: 6px;
+    margin-bottom: 24px;
+    background: var(--surface);
+    padding: 6px;
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-sm);
+    width: fit-content;
 }
 
-button {  
-    text-decoration: none;
-    color: #555;
-    border-radius: 12px;
+.btns button {
+    padding: 8px 16px;
     border: none;
-    background-color: transparent;
-    width: calc(100%/3);
+    border-radius: var(--radius-sm);
+    background: transparent;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+    width: auto;
 }
 
-button:hover {
-    background: #eef3ff;
+.btns button:hover {
+    background: var(--bg);
+    color: var(--text-primary);
 }
 
 .activebtn {
+    background: var(--primary) !important;
+    color: white !important;
+    font-weight: 700 !important;
+    border-radius: var(--radius-sm);
+}
+
+.validebtn {
+    background: #dcfce7 !important;
+    color: #16a34a !important;
+    font-weight: 700 !important;
+}
+
+/* ── Formulaires création / modification ── */
+.task-form {
+    background: var(--surface);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-md);
+    padding: 28px 32px;
+    margin-bottom: 28px;
+    border-left: 4px solid var(--primary);
+}
+
+.task-form h3 {
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: var(--text-primary);
+    margin-bottom: 20px;
+}
+
+.task-form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+.task-form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.task-form-group.full-width {
+    grid-column: 1 / -1;
+}
+
+.task-form-group label {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+}
+
+.task-form-group input,
+.task-form-group select {
+    padding: 10px 14px;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: 0.9rem;
+    color: var(--text-primary);
+    background: var(--bg);
+    font-family: var(--font);
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.task-form-group input:focus,
+.task-form-group select:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(99,102,241,0.12);
+    background: var(--surface);
+}
+
+.task-form-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 8px;
+}
+
+/* ── Kanban ── */
+.kanban-board {
+    display: flex;
+    gap: 16px;
+    overflow-x: auto;
+    padding-bottom: 16px;
+    align-items: flex-start;
+}
+
+.kanban-column {
+    min-width: 240px;
+    max-width: 280px;
+    flex-shrink: 0;
+    background: var(--surface);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+}
+
+.kanban-column-header {
     padding: 14px 16px;
-    text-decoration: none;
-    color: #555;
-    border-radius: 12px;
-    border: none;
-    border-bottom: 2px #b3c7f7 solid;
-    font-weight: 600;
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 1.5px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.kanban-column-count {
+    background: var(--bg);
+    color: var(--text-muted);
+    border-radius: 20px;
+    padding: 2px 8px;
+    font-size: 0.72rem;
+    font-weight: 700;
+}
+
+.kanban-column-body {
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-height: 80px;
+}
+
+/* ── Page validation ── */
+.validation-page {
+    background: var(--surface);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-md);
+    padding: 28px;
+}
+
+.validation-page h2 {
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: var(--text-primary);
+    margin-bottom: 16px;
+    padding-bottom: 14px;
+    border-bottom: 1.5px solid var(--border);
+}
+
+.validation-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.validation-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 18px;
+    background: var(--bg);
+    border-radius: var(--radius-md);
+    border: 1.5px solid var(--border);
+}
+
+.validation-item-info {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.validation-item-title {
+    font-weight: 700;
+    color: var(--text-primary);
+    font-size: 0.9rem;
+}
+
+.validation-item-meta {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+}
+
+.validation-actions {
+    display: flex;
+    gap: 8px;
 }
